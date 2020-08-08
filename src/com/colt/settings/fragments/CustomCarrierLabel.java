@@ -29,9 +29,14 @@ import android.text.Spannable;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.Switch;
+import android.widget.TextView;
 import androidx.preference.*;
 
 import com.android.internal.logging.nano.MetricsProto;
@@ -41,17 +46,23 @@ import com.android.settings.R;
 import com.android.settings.SettingsPreferenceFragment;
 
 import com.colt.settings.preference.SystemSettingListPreference;
+import com.colt.settings.preference.SystemSettingMasterSwitchPreference;
 
 public class CustomCarrierLabel extends SettingsPreferenceFragment
-        implements Preference.OnPreferenceChangeListener {
+        implements Preference.OnPreferenceChangeListener, CompoundButton.OnCheckedChangeListener {
 
     public static final String TAG = "CarrierLabel";
     private static final String CUSTOM_CARRIER_LABEL = "custom_carrier_label";
-    private static final String KEY_CARRIER_LABEL = "status_bar_show_carrier";
+    private static final String KEY_CARRIER_LABEL = "carrier_label_location";
+    private static final String CARRIER_LABEL = "carrier_label_enabled";
 
     private PreferenceScreen mCustomCarrierLabel;
     private String mCustomCarrierLabelText;
     private SystemSettingListPreference mShowCarrierLabel;
+    private SystemSettingMasterSwitchPreference mCarrierLabel;
+
+    private TextView mTextView;
+    private View mSwitchBar;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -66,20 +77,71 @@ public class CustomCarrierLabel extends SettingsPreferenceFragment
 
         mShowCarrierLabel = (SystemSettingListPreference) findPreference(KEY_CARRIER_LABEL);
         int showCarrierLabel = Settings.System.getInt(resolver,
-        Settings.System.STATUS_BAR_SHOW_CARRIER, 1);
-        CharSequence[] NonNotchEntries = { getResources().getString(R.string.show_carrier_disabled),
-                getResources().getString(R.string.show_carrier_keyguard),
-                getResources().getString(R.string.show_carrier_statusbar), getResources().getString(
-                        R.string.show_carrier_enabled) };
-        CharSequence[] NotchEntries = { getResources().getString(R.string.show_carrier_disabled),
-                getResources().getString(R.string.show_carrier_keyguard) };
-        CharSequence[] NonNotchValues = {"0", "1" , "2", "3"};
-        CharSequence[] NotchValues = {"0", "1"};
+                Settings.System.CARRIER_LABEL_LOCATION, 0);
+        CharSequence[] NonNotchEntries = {
+            getResources().getString(R.string.show_carrier_keyguard),
+            getResources().getString(R.string.show_carrier_statusbar),
+            getResources().getString(R.string.show_carrier_enabled)
+        };
+        CharSequence[] NotchEntries = {
+            getResources().getString(R.string.show_carrier_keyguard)
+        };
+        CharSequence[] NonNotchValues = {"0", "1" , "2"};
+        CharSequence[] NotchValues = {"0"};
         mShowCarrierLabel.setEntries(ColtUtils.hasNotch(getActivity()) ? NotchEntries : NonNotchEntries);
         mShowCarrierLabel.setEntryValues(ColtUtils.hasNotch(getActivity()) ? NotchValues : NonNotchValues);
         mShowCarrierLabel.setValue(String.valueOf(showCarrierLabel));
         mShowCarrierLabel.setSummary(mShowCarrierLabel.getEntry());
         mShowCarrierLabel.setOnPreferenceChangeListener(this);
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        final View view = LayoutInflater.from(getContext()).inflate(R.layout.master_setting_switch, container, false);
+        ((ViewGroup) view).addView(super.onCreateView(inflater, container, savedInstanceState));
+        return view;
+    }
+
+    @Override
+    public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        boolean enabled = Settings.System.getInt(getContentResolver(),
+                Settings.System.CARRIER_LABEL_ENABLED, 1) == 1;
+
+        mTextView = view.findViewById(R.id.switch_text);
+        mTextView.setText(getString(enabled ?
+                R.string.switch_on_text : R.string.switch_off_text));
+
+        mSwitchBar = view.findViewById(R.id.switch_bar);
+        Switch switchWidget = mSwitchBar.findViewById(android.R.id.switch_widget);
+        switchWidget.setChecked(enabled);
+        switchWidget.setOnCheckedChangeListener(this);
+        mSwitchBar.setActivated(enabled);
+        mSwitchBar.setOnClickListener(v -> {
+            switchWidget.setChecked(!switchWidget.isChecked());
+            mSwitchBar.setActivated(switchWidget.isChecked());
+        });
+
+        mCustomCarrierLabel.setEnabled(enabled);
+        mShowCarrierLabel.setEnabled(enabled);
+    }
+
+    @Override
+    public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+        Settings.System.putInt(getContentResolver(),
+                Settings.System.CARRIER_LABEL_ENABLED, isChecked ? 1 : 0);
+        mTextView.setText(getString(isChecked ? R.string.switch_on_text : R.string.switch_off_text));
+        mSwitchBar.setActivated(isChecked);
+
+        mCustomCarrierLabel.setEnabled(isChecked);
+        mShowCarrierLabel.setEnabled(isChecked);
+
+        mCarrierLabel = (SystemSettingMasterSwitchPreference) findPreference(CARRIER_LABEL);
+        mCarrierLabel.setChecked((Settings.System.getInt(getActivity().getContentResolver(),
+                Settings.System.CARRIER_LABEL_ENABLED, 1) == 1));
+        mCarrierLabel.setOnPreferenceChangeListener(this);
     }
 
     @Override
@@ -89,6 +151,11 @@ public class CustomCarrierLabel extends SettingsPreferenceFragment
             int value = Integer.parseInt((String) newValue);
             updateCarrierLabelSummary(value);
             return true;
+        } else if (preference == mCarrierLabel) {
+            boolean value = (Boolean) newValue;
+            Settings.System.putInt(getActivity().getContentResolver(),
+                    Settings.System.CARRIER_LABEL_ENABLED, value ? 1 : 0);
+            return true;
         }
         return false;
     }
@@ -97,14 +164,11 @@ public class CustomCarrierLabel extends SettingsPreferenceFragment
         Resources res = getResources();
 
         if (value == 0) {
-            // Carrier Label disabled
-            mShowCarrierLabel.setSummary(res.getString(R.string.show_carrier_disabled));
-        } else if (value == 1) {
             mShowCarrierLabel.setSummary(res.getString(R.string.show_carrier_keyguard));
-        } else if (value == 2) {
+        } else if (value == 1) {
             mShowCarrierLabel.setSummary(res.getString(R.string.show_carrier_statusbar));
-        } else if (value == 3) {
-            mShowCarrierLabel.setSummary(res.getString(R.string.show_carrier_enabled));
+        } else if (value == 2) {
+            mShowCarrierLabel.setSummary(res.getString(R.string.show_carrier_both));
         }
     }
 

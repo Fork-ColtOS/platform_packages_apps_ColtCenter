@@ -32,10 +32,11 @@
 
 	<!-- Carrier Label -->
         <com.colt.settings.preference.CategoryColtPreference
-            android:key="carrier_label"
+            android:key="carrier_label_enabled"
+            android:fragment="com.colt.settings.fragments.CustomCarrierLabel"
             android:title="@string/carrier_label_settings_title"
             android:summary="@string/carrier_label_settings_summary"
-            android:fragment="com.colt.settings.fragments.CustomCarrierLabel" />
+            android:defaultValue="0" />
 
 	<!-- Status Bar Clock -->
         <com.colt.settings.preference.CategoryColtPreference
@@ -59,6 +60,3 @@
             android:fragment="com.colt.settings.fragments.QuickSettings" />
 
 </PreferenceScreen>
-
-
-
