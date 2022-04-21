@@ -362,11 +362,11 @@ public class AboutTeam extends SettingsPreferenceFragment {
 	list.add(new AboutTeamAdapter.Maintainer(
                         "Xiaomi Redmi 5 Plus / Note 5 (Vince)",
                         new AboutTeamAdapter.Dev(
-                                "Alexandru Scurtu",
+                                "โฆสสิโล",
                                 "",
-                                "https://avatars3.githubusercontent.com/sashascurtu",
-                                "https://forum.xda-developers.com/showthread.php?t=4133341",
-                                "https://github.com/sashascurtu",
+                                "",
+                                "https://avatars3.githubusercontent.com/rayrzy",
+                                "https://github.com/rayrzy",
                                 ""
                         )
                 )
